@@ -30,17 +30,34 @@
       background: #f0f4ff;
       border-top: 2px solid #4f46e5;
     }
+    .session-timer {
+      font-size: 0.75rem;
+      color: #f97316;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
 
-  <!-- Setup Modal -->
-  <div id="setupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-white">
-    <div class="w-full max-w-sm bg-slate-50 p-6 rounded-3xl shadow-xl">
-      <h2 class="text-lg font-bold mb-4">Initial Setup</h2>
-      <input type="text" id="inputUrl" placeholder="Enter Script URL" class="w-full mb-3 px-4 py-3 rounded-xl border border-slate-200 text-sm">
-      <input type="password" id="inputPin" placeholder="Enter Secret PIN" class="w-full mb-4 px-4 py-3 rounded-xl border border-slate-200 text-sm">
-      <button onclick="saveConfig()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Save Settings</button>
+  <!-- Login Modal -->
+  <div id="loginModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div class="w-full max-w-sm bg-white p-8 rounded-3xl shadow-2xl">
+      <h2 class="text-2xl font-bold mb-2 text-slate-900">Welcome Back</h2>
+      <p class="text-sm text-slate-500 mb-6">Enter your credentials to access the tracker</p>
+      <div id="loginError" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
+      <input type="text" id="loginUrl" placeholder="Script URL" class="w-full mb-3 px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+      <input type="password" id="loginPin" placeholder="Secret PIN" class="w-full mb-6 px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+      <button onclick="handleLogin()" id="loginBtn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">Login</button>
+    </div>
+  </div>
+
+  <!-- Session Timeout Warning Modal -->
+  <div id="timeoutWarningModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div class="w-full max-w-sm bg-white p-8 rounded-3xl shadow-2xl">
+      <h2 class="text-xl font-bold mb-2 text-amber-900">⏰ Session Expiring Soon</h2>
+      <p class="text-sm text-slate-600 mb-6">Your session will expire in <span id="warningCountdown" class="font-bold text-orange-600">2 minutes</span>. Click below to stay logged in.</p>
+      <button onclick="extendSession()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold hover:bg-amber-600 transition mb-2">Stay Logged In</button>
+      <button onclick="handleLogout()" class="w-full bg-slate-200 text-slate-900 py-3 rounded-xl font-bold hover:bg-slate-300 transition">Logout Now</button>
     </div>
   </div>
 
@@ -50,7 +67,12 @@
         <p id="todayDate" class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1"></p>
         <h1 class="text-2xl font-bold text-slate-900">Hi, Bharata 👋</h1>
       </div>
-      <button onclick="resetConfig()" class="text-[10px] text-slate-400 underline">Settings</button>
+      <div class="flex items-center gap-3">
+        <div class="text-right">
+          <p id="sessionTimer" class="session-timer hidden">Session: --:--</p>
+        </div>
+        <button onclick="handleLogout()" class="text-[10px] text-slate-400 hover:text-red-500 underline">Logout</button>
+      </div>
     </div>
     
     <!-- Allowance Card -->
@@ -94,25 +116,189 @@
   </div>
 
   <script>
+    // ===== SESSION & LOGIN MANAGEMENT =====
     const STORAGE_URL = 'bw_script_url';
     const STORAGE_PIN = 'bw_script_pin';
+    const STORAGE_LOGIN_TIME = 'bw_login_time';
+    const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
+    const WARNING_TIME = 2 * 60 * 1000; // Show warning 2 minutes before timeout
 
-    function saveConfig() {
-      localStorage.setItem(STORAGE_URL, document.getElementById('inputUrl').value);
-      localStorage.setItem(STORAGE_PIN, document.getElementById('inputPin').value);
-      location.reload();
+    let sessionTimer = null;
+    let warningTimer = null;
+    let isLoggedIn = false;
+
+    function formatTime(ms) {
+      const minutes = Math.floor(ms / 60000);
+      const seconds = Math.floor((ms % 60000) / 1000);
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
-    function resetConfig() {
-      localStorage.clear();
-      location.reload();
+    function getTimeRemaining() {
+      const loginTime = parseInt(localStorage.getItem(STORAGE_LOGIN_TIME)) || 0;
+      const now = Date.now();
+      const timeRemaining = SESSION_DURATION - (now - loginTime);
+      return Math.max(0, timeRemaining);
     }
 
-    function checkConfig() {
-      if (!localStorage.getItem(STORAGE_URL)) {
-        document.getElementById('setupModal').classList.remove('hidden');
+    function isSessionValid() {
+      const loginTime = parseInt(localStorage.getItem(STORAGE_LOGIN_TIME)) || 0;
+      if (!loginTime) return false;
+      const timeRemaining = getTimeRemaining();
+      return timeRemaining > 0;
+    }
+
+    function updateSessionTimer() {
+      const timeRemaining = getTimeRemaining();
+      const timerEl = document.getElementById('sessionTimer');
+      
+      if (timeRemaining <= 0) {
+        handleSessionTimeout();
+        return;
+      }
+
+      timerEl.textContent = `Session: ${formatTime(timeRemaining)}`;
+    }
+
+    function startSessionTimer() {
+      if (sessionTimer) clearInterval(sessionTimer);
+      
+      // Update timer every second
+      sessionTimer = setInterval(() => {
+        updateSessionTimer();
+      }, 1000);
+      
+      // Show warning 2 minutes before timeout
+      if (warningTimer) clearTimeout(warningTimer);
+      const timeRemaining = getTimeRemaining();
+      const timeUntilWarning = timeRemaining - WARNING_TIME;
+      
+      if (timeUntilWarning > 0) {
+        warningTimer = setTimeout(() => {
+          showTimeoutWarning();
+        }, timeUntilWarning);
+      } else if (timeRemaining > 0) {
+        showTimeoutWarning();
       }
     }
+
+    function showTimeoutWarning() {
+      document.getElementById('timeoutWarningModal').classList.remove('hidden');
+      let countdownValue = 120; // 2 minutes
+      const countdownEl = document.getElementById('warningCountdown');
+      
+      const warningInterval = setInterval(() => {
+        countdownValue--;
+        if (countdownValue <= 0) {
+          clearInterval(warningInterval);
+          handleSessionTimeout();
+        } else {
+          const mins = Math.floor(countdownValue / 60);
+          const secs = countdownValue % 60;
+          countdownEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+        }
+      }, 1000);
+    }
+
+    function extendSession() {
+      localStorage.setItem(STORAGE_LOGIN_TIME, Date.now().toString());
+      document.getElementById('timeoutWarningModal').classList.add('hidden');
+      startSessionTimer();
+    }
+
+    function handleSessionTimeout() {
+      showLoginModal('Session expired! Please login again.');
+      clearAllTimers();
+      handleLogout();
+    }
+
+    function clearAllTimers() {
+      if (sessionTimer) clearInterval(sessionTimer);
+      if (warningTimer) clearTimeout(warningTimer);
+    }
+
+    async function handleLogin() {
+      const url = document.getElementById('loginUrl').value.trim();
+      const pin = document.getElementById('loginPin').value.trim();
+      const loginBtn = document.getElementById('loginBtn');
+      const errorEl = document.getElementById('loginError');
+
+      if (!url || !pin) {
+        errorEl.textContent = 'Please enter both URL and PIN';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Verifying...';
+      errorEl.classList.add('hidden');
+
+      try {
+        // Test connection with provided credentials
+        const res = await fetch(url + "?pin=" + pin);
+        if (!res.ok) {
+          throw new Error('Invalid credentials or URL');
+        }
+        const data = await res.json();
+        
+        // Save credentials
+        localStorage.setItem(STORAGE_URL, url);
+        localStorage.setItem(STORAGE_PIN, pin);
+        localStorage.setItem(STORAGE_LOGIN_TIME, Date.now().toString());
+        
+        isLoggedIn = true;
+        document.getElementById('loginModal').classList.add('hidden');
+        document.getElementById('sessionTimer').classList.remove('hidden');
+        startSessionTimer();
+        fetchData();
+      } catch (err) {
+        errorEl.textContent = 'Login failed: ' + err.message;
+        errorEl.classList.remove('hidden');
+        console.error(err);
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+      }
+    }
+
+    function handleLogout() {
+      clearAllTimers();
+      localStorage.removeItem(STORAGE_LOGIN_TIME);
+      isLoggedIn = false;
+      document.getElementById('sessionTimer').classList.add('hidden');
+      document.getElementById('timeoutWarningModal').classList.add('hidden');
+      showLoginModal();
+    }
+
+    function showLoginModal(message = '') {
+      const modal = document.getElementById('loginModal');
+      const errorEl = document.getElementById('loginError');
+      
+      document.getElementById('loginUrl').value = localStorage.getItem(STORAGE_URL) || '';
+      document.getElementById('loginPin').value = '';
+      
+      if (message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+      }
+      
+      modal.classList.remove('hidden');
+    }
+
+    function checkLogin() {
+      if (!localStorage.getItem(STORAGE_URL) || !isSessionValid()) {
+        isLoggedIn = false;
+        document.getElementById('sessionTimer').classList.add('hidden');
+        showLoginModal();
+      } else {
+        isLoggedIn = true;
+        document.getElementById('sessionTimer').classList.remove('hidden');
+        startSessionTimer();
+      }
+    }
+
+    // ===== TRACKER FUNCTIONALITY =====
 
     function toggleVisibility(elementId) {
       const element = document.getElementById(elementId);
@@ -240,6 +426,13 @@
 
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      
+      // Check session validity
+      if (!isSessionValid()) {
+        handleSessionTimeout();
+        return;
+      }
+
       const btn = document.getElementById('submitBtn');
       btn.innerText = "Saving...";
       const formData = new URLSearchParams({
@@ -248,10 +441,17 @@
         jumlah: document.getElementById('jumlahDisplay').value.replace(/\./g, ''),
         pin: localStorage.getItem(STORAGE_PIN)
       });
-      await fetch(localStorage.getItem(STORAGE_URL), { method: "POST", body: formData });
-      btn.innerText = "Save Transaction";
-      document.getElementById('expenseForm').reset();
-      fetchData();
+      
+      try {
+        await fetch(localStorage.getItem(STORAGE_URL), { method: "POST", body: formData });
+        btn.innerText = "Save Transaction";
+        document.getElementById('expenseForm').reset();
+        fetchData();
+      } catch (err) {
+        console.error(err);
+        btn.innerText = "Error! Try again";
+        setTimeout(() => { btn.innerText = "Save Transaction"; }, 2000);
+      }
     });
 
     function renderHistory(transactions) {
@@ -328,8 +528,8 @@
       }).join('');
     }
 
-    checkConfig();
-    fetchData();
+    // Initialize
+    checkLogin();
   </script>
 </body>
 </html>
