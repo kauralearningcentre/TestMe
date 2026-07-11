@@ -25,39 +25,46 @@
   </form>
 
   <script>
-    const URL = "https://script.google.com/macros/s/AKfycbz3nmxuSBf0jNYjJPhHuhX53BIvMeBdWLto5eDnn96OorK0QroPKyjo7yiJk5sT9inr/execc";
+    const URL = "https://script.google.com/macros/s/AKfycbz3nmxuSBf0jNYjJPhHuhX53BIvMeBdWLto5eDnn96OorK0QroPKyjo7yiJk5sT9inr/exec";
     
-    document.getElementById("expenseForm").addEventListener("submit", function(e) {
+    document.getElementById("expenseForm").addEventListener("submit", async function(e) {
       e.preventDefault();
-      
       const submitBtn = document.getElementById("submitBtn");
       submitBtn.disabled = true;
       submitBtn.innerText = "Mengirim...";
-
-      // Menggunakan FormData agar kompatibel dengan mode: 'no-cors'
-      const formData = new FormData();
-      formData.append('barang', document.getElementById("barang").value);
-      formData.append('kategori', document.getElementById("kategori").value);
-      formData.append('jumlah', document.getElementById("jumlah").value);
       
-      // Menggunakan mode: 'no-cors' untuk menghindari blokir CORS
-      fetch(URL, { 
-        method: "POST", 
-        mode: "no-cors",
-        body: formData
-      })
-      .then(() => {
-        alert("Data berhasil dikirim!");
-        document.getElementById("expenseForm").reset();
-      })
-      .catch(err => {
+      const payload = {
+        barang: document.getElementById("barang").value,
+        kategori: document.getElementById("kategori").value,
+        jumlah: document.getElementById("jumlah").value
+      };
+
+      try {
+        const res = await fetch(URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        // Periksa status & response JSON dari server
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); } catch(e) { json = { raw: text }; }
+
+        if (!res.ok) {
+          console.error("HTTP error:", res.status, text);
+          alert("Terjadi kesalahan: " + (json.message || res.status));
+        } else {
+          alert("Data berhasil dikirim!");
+          document.getElementById("expenseForm").reset();
+        }
+      } catch (err) {
         console.error(err);
-        alert("Terjadi kesalahan, silakan coba lagi.");
-      })
-      .finally(() => {
+        alert("Terjadi kesalahan jaringan, silakan coba lagi.");
+      } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "Simpan";
-      });
+      }
     });
   </script>
 </body>
