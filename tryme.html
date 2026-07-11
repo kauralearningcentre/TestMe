@@ -3,149 +3,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Expense Tracker</title>
+  <title>B.W. Expense Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .modern-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); }
-    .scroll-hide::-webkit-scrollbar { display: none; }
+    body { background-color: #f8fafc; }
+    .fintech-gradient { background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%); }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(241, 245, 249, 1); }
+    .hidden-balance { filter: blur(8px); pointer-events: none; transition: 0.3s; }
   </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 font-sans text-slate-900">
+<body class="p-4 md:p-8 font-sans text-slate-800">
 
-  <div class="modern-card p-6 rounded-[2rem] shadow-2xl w-full max-w-sm mx-auto border border-white">
-    <div class="text-center mb-6">
-      <h2 class="text-2xl font-bold text-slate-800">Expense Tracker</h2>
-      <p id="todayDate" class="text-xs text-slate-500 font-medium mt-1"></p>
-    </div>
+  <div class="max-w-md mx-auto">
     
-    <div class="bg-indigo-600 p-6 rounded-[1.5rem] mb-6 shadow-xl text-center text-white">
-      <label class="block text-indigo-200 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 cursor-pointer" onclick="toggleVisibility('sisaBudget', 'budgetLabel')">
-        <span id="budgetLabel">Tap to show Remaining Budget</span>
-      </label>
-      <div id="sisaBudget" class="text-3xl font-black hidden">Loading...</div>
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Good Day!</p>
+        <h2 class="text-sm font-bold text-slate-700">Bharata Wicaksana</h2>
+      </div>
+      <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">BW</div>
     </div>
-    
-    <form id="expenseForm" class="space-y-3">
-      <input type="text" id="barang" placeholder="Description" required class="w-full px-5 py-3 rounded-2xl bg-slate-100 border-none outline-none">
-      <select id="kategori" class="w-full px-5 py-3 rounded-2xl bg-slate-100 border-none outline-none">
-        <option value="Food">🍔 Food & Drink</option>
-        <option value="Transport">🚗 Transport</option>
-        <option value="Bills">💡 Bills / Electricity / Credit</option>
-        <option value="Shopping">🛒 Monthly Shopping</option>
-        <option value="Entertainment">🎮 Entertainment</option>
-        <option value="Health">💊 Health</option>
-        <option value="Others">📦 Others</option>
-      </select>
-      <input type="number" id="jumlah" placeholder="Amount (IDR)" required class="w-full px-5 py-3 rounded-2xl bg-slate-100 border-none outline-none">
-      <button type="submit" id="submitBtn" class="w-full bg-slate-900 text-white font-bold py-3 rounded-2xl hover:bg-slate-800 transition">Save Transaction</button>
+
+    <!-- Allowance Card -->
+    <div class="fintech-gradient p-6 rounded-[2rem] shadow-xl shadow-blue-500/20 text-white mb-6">
+      <div class="flex justify-between items-center mb-1">
+        <p class="text-[10px] uppercase tracking-widest opacity-80 font-bold">Your Allowance</p>
+        <button onclick="toggleBalance()" class="text-[10px] font-bold opacity-70 underline">Toggle</button>
+      </div>
+      <h1 id="sisaBudget" class="text-3xl font-bold tracking-tight mb-4 hidden-balance">Loading...</h1>
+    </div>
+
+    <!-- Transaction Form -->
+    <form id="expenseForm" class="glass-card p-6 rounded-[2rem] shadow-lg border border-slate-100 mb-6">
+      <input type="text" id="barang" placeholder="What do you buy?" required 
+        class="w-full mb-4 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+      
+      <div class="flex flex-col gap-2 mb-4">
+        <!-- Category Selector -->
+        <select id="kategori" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none text-sm text-slate-600">
+          <option value="Food">🍔 Food & Drink</option>
+          <option value="Transport">🚗 Transport</option>
+          <option value="Fuel">⛽ Fuel</option>
+          <option value="Bills">💡 Bills / Electricity / Credit</option>
+          <option value="Shopping">🛒 Monthly Shopping</option>
+          <option value="Entertainment">🎮 Entertainment</option>
+          <option value="Health">💊 Health</option>
+          <option value="Others">📦 Others</option>
+        </select>
+        <!-- Amount Below Category -->
+        <input type="number" id="jumlah" placeholder="Amount" required 
+          class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+      </div>
+      
+      <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition">Save Entry</button>
     </form>
 
-    <div class="mt-8">
-      <h3 class="text-sm font-bold text-slate-700 mb-4 cursor-pointer underline" onclick="toggleVisibility('expenseList', 'historyLabel')">
-        <span id="historyLabel">Tap to show Expense History</span>
-      </h3>
-      <div id="expenseList" class="space-y-3 hidden"></div>
+    <!-- Recent Transactions -->
+    <div class="mb-4 flex items-center justify-between cursor-pointer" onclick="toggleHistory()">
+      <h3 class="font-bold text-slate-800">Recent Transactions</h3>
+      <span id="historyToggleText" class="text-[10px] text-indigo-600 font-bold">SHOW</span>
+    </div>
+
+    <div id="expenseList" class="space-y-3 hidden">
+      <!-- Transactions injected here -->
     </div>
   </div>
 
   <script>
-    const URL = "https://script.google.com/macros/s/AKfycbz3nmxuSBf0jNYjJPhHuhX53BIvMeBdWLto5eDnn96OorK0QroPKyjo7yiJk5sT9inr/exec";
-    let transactions = [];
+    const URL = "https://script.google.com/macros/s/AKfycbz3nmxuSBf0jNYjJPhHuhX53BIvMeBdWLto5eDnn96OorK0QroPKyjo7yiJk5sT9inr/exec"; 
     let budgetTotal = 0;
+    let transactions = [];
 
-    document.getElementById('todayDate').innerText = new Date().toLocaleDateString('id-ID');
-
-    window.onload = async () => {
+    async function fetchData() {
       try {
         const res = await fetch(URL);
         const data = await res.json();
         budgetTotal = parseFloat(data.budget) || 0;
         transactions = data.history || [];
-        updateUI();
-      } catch (err) { console.error(err); }
-    };
-
-    function updateUI() {
-      const list = document.getElementById('expenseList');
-      list.innerHTML = '';
-      
-      // Langsung tampilkan budgetTotal yang diambil dari Google Sheets (F2)
-      document.getElementById('sisaBudget').innerText = new Intl.NumberFormat('id-ID', {
-        style: 'currency', 
-        currency: 'IDR', 
-        maximumFractionDigits: 0
-      }).format(budgetTotal);
-
-      const groups = transactions.reduce((acc, tx) => {
-        const d = new Date(tx.date);
-        const month = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
-        const week = Math.ceil(d.getDate() / 7);
-        if (!acc[month]) acc[month] = {};
-        if (!acc[month][week]) acc[month][week] = [];
-        acc[month][week].push(tx);
-        return acc;
-      }, {});
-
-      Object.keys(groups).sort().reverse().forEach(month => {
-        list.innerHTML += `<div class="text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-widest">${month}</div>`;
-        Object.keys(groups[month]).sort().reverse().forEach(week => {
-          const totalWeek = groups[month][week].reduce((s, t) => s + Number(t.jumlah), 0);
-          const weekId = `${month}-${week}`.replace(/\s+/g, '-');
-          list.innerHTML += `
-            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
-              <div class="flex justify-between font-bold text-xs cursor-pointer" onclick="toggleDetails('${weekId}')">
-                <span>Week ${week}</span>
-                <span>Rp ${totalWeek.toLocaleString('id-ID')}</span>
-              </div>
-              <div id="details-${weekId}" class="hidden mt-3 space-y-2 border-t border-slate-50 pt-2">
-                ${groups[month][week].map(t => `
-                  <div class="flex justify-between text-[10px] text-slate-500">
-                    <span>${new Date(t.date).toLocaleDateString('id-ID')} - ${t.barang}</span>
-                    <span class="font-semibold text-slate-700">${Number(t.jumlah).toLocaleString('id-ID')}</span>
-                  </div>`).join('')}
-              </div>
-            </div>`;
-        });
-      });
-    }
-
-    function toggleVisibility(id, labelId) {
-      const el = document.getElementById(id);
-      const label = document.getElementById(labelId);
-      if (el.classList.contains('hidden')) {
-        el.classList.remove('hidden');
-        label.innerText = labelId === 'budgetLabel' ? 'Remaining Budget' : 'Expense History';
-      } else {
-        el.classList.add('hidden');
-        label.innerText = labelId === 'budgetLabel' ? 'Tap to show Remaining Budget' : 'Tap to show Expense History';
+        renderHistory();
+      } catch (err) {
+        document.getElementById('sisaBudget').innerText = "Oops!";
       }
     }
 
-    function toggleDetails(id) {
-      const el = document.getElementById(`details-${id}`);
-      if (el) el.classList.toggle('hidden');
+    function toggleBalance() {
+      document.getElementById('sisaBudget').classList.toggle('hidden-balance');
+    }
+
+    function toggleHistory() {
+      const list = document.getElementById('expenseList');
+      const toggleText = document.getElementById('historyToggleText');
+      list.classList.toggle('hidden');
+      toggleText.innerText = list.classList.contains('hidden') ? 'SHOW' : 'HIDE';
+    }
+
+    function toggleWeek(id) {
+      const el = document.getElementById(id);
+      el.classList.toggle('hidden');
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('expenseList');
+      list.innerHTML = '';
+      
+      document.getElementById('sisaBudget').innerText = new Intl.NumberFormat('id-ID', {
+        style: 'currency', currency: 'IDR', maximumFractionDigits: 0
+      }).format(budgetTotal);
+
+      // Grouping by Week
+      const grouped = transactions.reduce((acc, tx) => {
+        const d = new Date(tx.date);
+        const week = Math.ceil(d.getDate() / 7);
+        const month = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        const key = `${month} - Week ${week}`;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(tx);
+        return acc;
+      }, {});
+
+      Object.keys(grouped).forEach((key, index) => {
+        const weekId = `week-${index}`;
+        list.innerHTML += `
+            <div class="glass-card p-4 rounded-2xl border border-slate-100">
+                <div class="flex items-center justify-between cursor-pointer" onclick="toggleWeek('${weekId}')">
+                    <p class="text-xs font-bold text-slate-800">${key}</p>
+                    <span class="text-[10px] text-slate-400">Tap to see</span>
+                </div>
+                <div id="${weekId}" class="hidden mt-3 space-y-2">
+                    ${grouped[key].reverse().map(t => `
+                        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm">
+                                    ${t.kategori === 'Food' ? '🍔' : t.kategori === 'Transport' ? '🚗' : t.kategori === 'Fuel' ? '⛽' : t.kategori === 'Bills' ? '💡' : t.kategori === 'Shopping' ? '🛒' : t.kategori === 'Entertainment' ? '🎮' : t.kategori === 'Health' ? '💊' : '📦'}
+                                </div>
+                                <p class="text-xs font-bold text-slate-800">${t.barang}</p>
+                            </div>
+                            <span class="text-xs font-bold text-slate-800">- ${Number(t.jumlah).toLocaleString('id-ID')}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+      });
     }
 
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = document.getElementById("submitBtn");
-      btn.innerText = "Saving...";
+      btn.innerText = "Processing...";
       
-      const newTx = {
-        date: new Date().toISOString().split('T')[0],
-        barang: document.getElementById('barang').value,
-        kategori: document.getElementById('kategori').value,
-        jumlah: document.getElementById('jumlah').value
-      };
+      const formData = new URLSearchParams();
+      formData.append('barang', document.getElementById('barang').value);
+      formData.append('kategori', document.getElementById('kategori').value);
+      formData.append('jumlah', document.getElementById('jumlah').value);
 
       try {
-        await fetch(URL, { method: "POST", body: new URLSearchParams(newTx) });
-        transactions.push(newTx);
-        updateUI();
+        await fetch(URL, { method: "POST", body: formData });
         document.getElementById('expenseForm').reset();
-      } catch (err) { alert("Failed to save data."); }
-      btn.innerText = "Save Transaction";
+        await fetchData();
+      } catch (err) {
+        console.error(err);
+      }
+      btn.innerText = "Save Entry";
     });
+
+    fetchData();
   </script>
 </body>
 </html>
