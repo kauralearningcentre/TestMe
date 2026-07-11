@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catat Pengeluaran</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
+    input, select, button { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+    button { background: #4a90e2; color: white; border: none; cursor: pointer; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h2>Catat Pengeluaran</h2>
+  <form id="expenseForm">
+    <input type="text" id="barang" placeholder="Nama Barang" required>
+    <select id="kategori">
+      <option value="Makan">Makan</option>
+      <option value="Transport">Transport</option>
+      <option value="Hiburan">Hiburan</option>
+      <option value="Lainnya">Lainnya</option>
+    </select>
+    <input type="number" id="jumlah" placeholder="Jumlah (Rp)" required>
+    <button type="submit">Simpan</button>
+  </form>
+
+  <script>
+    // Pastikan ini adalah URL Web App terbaru Anda setelah klik Deploy
+    const URL = "https://script.google.com/macros/s/AKfycbwdfaSJmf5-zcRP0WfCtMW3WNRKGgf5hK0rFM2ovB2TY8qqHyyDb61EJwpB7iS88m55/exec";
+    
+    document.getElementById("expenseForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const data = {
+        barang: document.getElementById("barang").value,
+        kategori: document.getElementById("kategori").value,
+        jumlah: document.getElementById("jumlah").value
+      };
+      
+      fetch(URL, { 
+        method: "POST", 
+        mode: 'no-cors', 
+        body: JSON.stringify(data) 
+      })
+      .then(() => {
+        alert("Data berhasil dicatat!");
+        document.getElementById("expenseForm").reset();
+      })
+      .catch(err => alert("Terjadi kesalahan: " + err));
+    });
+  </script>
+</body>
+</html>
