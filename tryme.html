@@ -8,6 +8,7 @@
     body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
     input, select, button { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
     button { background: #4a90e2; color: white; border: none; cursor: pointer; border-radius: 5px; }
+    pre { background:#f5f5f5; padding:10px; white-space:pre-wrap; word-wrap:break-word; }
   </style>
 </head>
 <body>
@@ -24,43 +25,64 @@
     <button type="submit" id="submitBtn">Simpan</button>
   </form>
 
+  <h3>Debug</h3>
+  <div id="debug"></div>
+
   <script>
     const URL = "https://script.google.com/macros/s/AKfycbz3nmxuSBf0jNYjJPhHuhX53BIvMeBdWLto5eDnn96OorK0QroPKyjo7yiJk5sT9inr/exec";
-    
+
+    function logDebug(msg) {
+      console.log(msg);
+      const d = document.getElementById('debug');
+      const p = document.createElement('pre');
+      p.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg, null, 2);
+      d.prepend(p);
+    }
+
     document.getElementById("expenseForm").addEventListener("submit", async function(e) {
       e.preventDefault();
       const submitBtn = document.getElementById("submitBtn");
       submitBtn.disabled = true;
       submitBtn.innerText = "Mengirim...";
-      
+
+      // ambil nilai
       const payload = {
         barang: document.getElementById("barang").value,
         kategori: document.getElementById("kategori").value,
         jumlah: document.getElementById("jumlah").value
       };
 
+      // kirim sebagai URL-encoded (mengurangi kemungkinan preflight)
+      const body = new URLSearchParams(payload).toString();
+
       try {
+        logDebug("Mengirim ke: " + URL);
+        logDebug("Payload: " + body);
+
         const res = await fetch(URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: body,
+          // jangan set header Content-Type ke application/json — biarkan browser mengatur header sederhana
+          // mode: 'cors' // default sudah 'cors'
         });
 
-        // Periksa status & response JSON dari server
         const text = await res.text();
+        logDebug("HTTP " + res.status + " - response: " + text);
+
         let json;
         try { json = JSON.parse(text); } catch(e) { json = { raw: text }; }
 
         if (!res.ok) {
           console.error("HTTP error:", res.status, text);
-          alert("Terjadi kesalahan: " + (json.message || res.status));
+          alert("Terjadi kesalahan: " + (json.message || res.status + " — lihat debug"));
         } else {
-          alert("Data berhasil dikirim!");
+          alert("Data berhasil dikirim!\nResponse: " + (json.message || text));
           document.getElementById("expenseForm").reset();
         }
       } catch (err) {
         console.error(err);
-        alert("Terjadi kesalahan jaringan, silakan coba lagi.");
+        logDebug("Fetch error: " + err);
+        alert("Terjadi kesalahan jaringan atau CORS, silakan periksa Console (F12).");
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "Simpan";
