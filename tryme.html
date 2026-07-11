@@ -21,7 +21,7 @@
       <option value="Lainnya">Lainnya</option>
     </select>
     <input type="number" id="jumlah" placeholder="Jumlah (Rp)" required>
-    <button type="submit">Simpan</button>
+    <button type="submit" id="submitBtn">Simpan</button>
   </form>
 
   <script>
@@ -30,23 +30,33 @@
     document.getElementById("expenseForm").addEventListener("submit", function(e) {
       e.preventDefault();
       
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Mengirim...";
+
+      // Menggunakan FormData agar kompatibel dengan mode: 'no-cors'
       const formData = new FormData();
       formData.append('barang', document.getElementById("barang").value);
       formData.append('kategori', document.getElementById("kategori").value);
       formData.append('jumlah', document.getElementById("jumlah").value);
       
+      // Menggunakan mode: 'no-cors' untuk menghindari blokir CORS
       fetch(URL, { 
         method: "POST", 
         mode: "no-cors",
         body: formData
       })
       .then(() => {
-        alert("Data berhasil dikirim ke Google Sheet!");
+        alert("Data berhasil dikirim!");
         document.getElementById("expenseForm").reset();
       })
       .catch(err => {
         console.error(err);
-        alert("Terjadi kesalahan, silakan cek koneksi.");
+        alert("Terjadi kesalahan, silakan coba lagi.");
+      })
+      .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Simpan";
       });
     });
   </script>
