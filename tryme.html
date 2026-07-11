@@ -68,7 +68,7 @@
       <h2 class="text-2xl font-bold mb-2 text-slate-900">Welcome Back</h2>
       <p class="text-sm text-slate-500 mb-6">Enter your credentials to access the tracker</p>
       <div id="loginError" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
-      <input type="text" id="loginUrl" placeholder="Script URL" class="w-full mb-3 px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+      <input type="password" id="loginUrl" placeholder="Script URL" class="w-full mb-3 px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
       <input type="password" id="loginPin" placeholder="Secret PIN" class="w-full mb-6 px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
       <button onclick="handleLogin()" id="loginBtn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">Login</button>
     </div>
@@ -91,9 +91,6 @@
         <h1 class="text-2xl font-bold text-slate-900">Hi, Bharata 👋</h1>
       </div>
       <div class="flex items-center gap-3">
-        <div class="text-right">
-          <p id="sessionTimer" class="session-timer hidden">Session: --:--</p>
-        </div>
         <button onclick="handleLogout()" class="text-[10px] text-slate-400 hover:text-red-500 underline">Logout</button>
       </div>
     </div>
@@ -144,7 +141,7 @@
     const STORAGE_URL = 'bw_script_url';
     const STORAGE_PIN = 'bw_script_pin';
     const STORAGE_LOGIN_TIME = 'bw_login_time';
-    const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
+    const SESSION_DURATION = 10 * 60 * 1000; // 10 minutes
     const WARNING_TIME = 2 * 60 * 1000; // Show warning 2 minutes before timeout
 
     let sessionTimer = null;
@@ -174,14 +171,11 @@
 
     function updateSessionTimer() {
       const timeRemaining = getTimeRemaining();
-      const timerEl = document.getElementById('sessionTimer');
       
       if (timeRemaining <= 0) {
         handleSessionTimeout();
         return;
       }
-
-      timerEl.textContent = `Session: ${formatTime(timeRemaining)}`;
     }
 
     function startSessionTimer() {
@@ -273,7 +267,6 @@
         isLoggedIn = true;
         balanceVisible = false; // Reset balance visibility on login
         document.getElementById('loginModal').classList.add('hidden');
-        document.getElementById('sessionTimer').classList.remove('hidden');
         startSessionTimer();
         fetchData();
       } catch (err) {
@@ -291,7 +284,6 @@
       localStorage.removeItem(STORAGE_LOGIN_TIME);
       isLoggedIn = false;
       balanceVisible = false;
-      document.getElementById('sessionTimer').classList.add('hidden');
       document.getElementById('timeoutWarningModal').classList.add('hidden');
       showLoginModal();
     }
@@ -300,7 +292,8 @@
       const modal = document.getElementById('loginModal');
       const errorEl = document.getElementById('loginError');
       
-      document.getElementById('loginUrl').value = localStorage.getItem(STORAGE_URL) || '';
+      // Clear input fields
+      document.getElementById('loginUrl').value = '';
       document.getElementById('loginPin').value = '';
       
       if (message) {
@@ -317,11 +310,9 @@
       if (!localStorage.getItem(STORAGE_URL) || !isSessionValid()) {
         isLoggedIn = false;
         balanceVisible = false;
-        document.getElementById('sessionTimer').classList.add('hidden');
         showLoginModal();
       } else {
         isLoggedIn = true;
-        document.getElementById('sessionTimer').classList.remove('hidden');
         startSessionTimer();
       }
     }
