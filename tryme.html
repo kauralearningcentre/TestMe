@@ -22,6 +22,14 @@
       background: #f8fafc;
       border-top: 1px solid #e2e8f0;
     }
+    .month-header {
+      background: linear-gradient(135deg, #c7d2fe 0%, #dbeafe 100%);
+      border-left: 4px solid #4f46e5;
+    }
+    .month-total {
+      background: #f0f4ff;
+      border-top: 2px solid #4f46e5;
+    }
   </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
@@ -119,7 +127,7 @@
       if (budgetEl.innerText.includes('*')) {
         // Already hidden, show it
         fetchData();
-        eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />';
+        eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 11-5.971-2.93m7.538 5.993l4.243 4.242m-4.243-4.243L9.172 9.172m9.534-2.787a1 1 0 00-1.414-1.414L2.828 15.586a1 1 0 101.414 1.414l15.556-15.556z" />';
       } else {
         budgetEl.innerText = '*******';
         eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />';
@@ -142,13 +150,13 @@
 
     document.getElementById('todayDate').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
     
-    // Helper function to get week number
-    function getWeekNumber(date) {
-      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      const dayNum = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    // Helper function to get week number within a month
+    function getWeekOfMonth(date) {
+      const d = new Date(date);
+      const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+      const firstDayOfWeek = firstDay.getDay();
+      const dateOfMonth = d.getDate();
+      return Math.ceil((dateOfMonth + firstDayOfWeek) / 7);
     }
 
     // Helper function to get week start and end dates
@@ -167,20 +175,44 @@
       return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
-    // Group transactions by week
-    function groupByWeek(transactions) {
+    // Format month for display
+    function formatMonth(date) {
+      return new Date(date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+
+    // Group transactions by Month → Week (Hierarchical Grouping)
+    function groupByMonthAndWeek(transactions) {
       const grouped = {};
       
       transactions.forEach(t => {
         const date = new Date(t.date || new Date());
-        const week = getWeekNumber(date);
         const year = date.getFullYear();
-        const key = `${year}-W${String(week).padStart(2, '0')}`;
+        const month = date.getMonth();
+        const weekOfMonth = getWeekOfMonth(date);
         
-        if (!grouped[key]) {
-          grouped[key] = {
-            week,
+        // Month key: YYYY-MM
+        const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+        
+        // Week key within month: YYYY-MM-W1, YYYY-MM-W2, etc.
+        const weekKey = `${monthKey}-W${weekOfMonth}`;
+        
+        // Initialize month group if not exists
+        if (!grouped[monthKey]) {
+          grouped[monthKey] = {
+            monthKey,
             year,
+            month,
+            date,
+            weeks: {},
+            total: 0
+          };
+        }
+        
+        // Initialize week group if not exists
+        if (!grouped[monthKey].weeks[weekKey]) {
+          grouped[monthKey].weeks[weekKey] = {
+            weekKey,
+            weekOfMonth,
             date,
             transactions: [],
             total: 0
@@ -188,8 +220,9 @@
         }
         
         const amount = parseFloat(t.jumlah) || 0;
-        grouped[key].transactions.push(t);
-        grouped[key].total += amount;
+        grouped[monthKey].weeks[weekKey].transactions.push(t);
+        grouped[monthKey].weeks[weekKey].total += amount;
+        grouped[monthKey].total += amount;
       });
       
       return grouped;
@@ -229,44 +262,66 @@
         return;
       }
 
-      // Group transactions by week
-      const grouped = groupByWeek(transactions);
+      // Group transactions by Month → Week (Hierarchical)
+      const grouped = groupByMonthAndWeek(transactions);
       
-      // Sort weeks in descending order (newest first)
-      const sortedWeeks = Object.keys(grouped).sort((a, b) => {
-        const [yearA, weekA] = a.split('-W').map(Number);
-        const [yearB, weekB] = b.split('-W').map(Number);
-        if (yearA !== yearB) return yearB - yearA;
-        return weekB - weekA;
+      // Sort months in descending order (newest first)
+      const sortedMonths = Object.keys(grouped).sort((a, b) => {
+        return b.localeCompare(a);
       });
 
-      // Render each week group
-      list.innerHTML = sortedWeeks.map(weekKey => {
-        const group = grouped[weekKey];
-        const { startDate, endDate } = getWeekDateRange(group.date);
-        const weekLabel = `Week ${group.week} (${formatDateShort(startDate)} - ${formatDateShort(endDate)})`;
+      // Render each month group with weeks inside
+      list.innerHTML = sortedMonths.map(monthKey => {
+        const monthGroup = grouped[monthKey];
+        const monthLabel = formatMonth(monthGroup.date);
+        
+        // Sort weeks within month in descending order
+        const sortedWeeks = Object.keys(monthGroup.weeks)
+          .sort((a, b) => monthGroup.weeks[b].weekOfMonth - monthGroup.weeks[a].weekOfMonth);
+        
+        // Render each week within the month
+        const weeksHtml = sortedWeeks.map(weekKey => {
+          const weekGroup = monthGroup.weeks[weekKey];
+          const { startDate, endDate } = getWeekDateRange(weekGroup.date);
+          const weekLabel = `Week ${weekGroup.weekOfMonth} (${formatDateShort(startDate)} - ${formatDateShort(endDate)})`;
 
-        const transactionsHtml = group.transactions.map(t => `
-          <div class="bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center text-xs text-slate-600">
-            <div class="flex-1">
-              <span class="font-medium text-slate-900">${t.barang}</span>
-              <span class="text-slate-400 ml-2">${t.kategori || 'Others'}</span>
+          const transactionsHtml = weekGroup.transactions.map(t => `
+            <div class="bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center text-xs text-slate-600">
+              <div class="flex-1">
+                <span class="font-medium text-slate-900">${t.barang}</span>
+                <span class="text-slate-400 ml-2">${t.kategori || 'Others'}</span>
+              </div>
+              <span class="font-semibold text-slate-900">Rp ${(parseFloat(t.jumlah) || 0).toLocaleString('id-ID')}</span>
             </div>
-            <span class="font-semibold text-slate-900">Rp ${(parseFloat(t.jumlah) || 0).toLocaleString('id-ID')}</span>
-          </div>
-        `).join('');
+          `).join('');
+
+          return `
+            <div class="border border-slate-200 rounded-2xl overflow-hidden mb-3">
+              <div class="week-header px-4 py-3">
+                <h5 class="font-bold text-sm text-indigo-900">${weekLabel}</h5>
+              </div>
+              <div class="space-y-2 p-3">
+                ${transactionsHtml}
+              </div>
+              <div class="week-total px-4 py-3 flex justify-between items-center">
+                <span class="text-xs font-semibold text-slate-600">WEEK TOTAL</span>
+                <span class="font-bold text-sm text-indigo-600">Rp ${weekGroup.total.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
 
         return `
-          <div class="border border-slate-200 rounded-2xl overflow-hidden">
-            <div class="week-header px-4 py-3">
-              <h4 class="font-bold text-sm text-indigo-900">${weekLabel}</h4>
+          <div class="mb-6 border border-indigo-300 rounded-3xl overflow-hidden shadow-md">
+            <div class="month-header px-4 py-4">
+              <h4 class="font-bold text-base text-indigo-950">📅 ${monthLabel}</h4>
             </div>
-            <div class="space-y-2 p-3">
-              ${transactionsHtml}
+            <div class="p-4 space-y-3">
+              ${weeksHtml}
             </div>
-            <div class="week-total px-4 py-3 flex justify-between items-center">
-              <span class="text-xs font-semibold text-slate-600">WEEK TOTAL</span>
-              <span class="font-bold text-sm text-indigo-600">Rp ${group.total.toLocaleString('id-ID')}</span>
+            <div class="month-total px-4 py-4 flex justify-between items-center">
+              <span class="text-sm font-bold text-slate-700">MONTH TOTAL</span>
+              <span class="font-bold text-lg text-indigo-700">Rp ${monthGroup.total.toLocaleString('id-ID')}</span>
             </div>
           </div>
         `;
