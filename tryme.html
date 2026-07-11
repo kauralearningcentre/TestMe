@@ -6,179 +6,151 @@
   <title>B.W. Expense Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .fintech-gradient { background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%); }
-    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(241, 245, 249, 1); }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #ffffff; color: #1e293b; }
+    .allowance-card { 
+      background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+      position: relative; overflow: hidden;
+    }
+    .glass { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.7); }
+    ::-webkit-scrollbar { display: none; }
   </style>
 </head>
-<body class="p-4 md:p-8 font-sans text-slate-800 bg-slate-50">
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
 
-  <div class="max-w-md mx-auto">
+  <!-- Setup Modal -->
+  <div id="setupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-white">
+    <div class="w-full max-w-sm bg-slate-50 p-6 rounded-3xl shadow-xl">
+      <h2 class="text-lg font-bold mb-4">Initial Setup</h2>
+      <input type="text" id="inputUrl" placeholder="Enter Script URL" class="w-full mb-3 px-4 py-3 rounded-xl border border-slate-200 text-sm">
+      <input type="password" id="inputPin" placeholder="Enter Secret PIN" class="w-full mb-4 px-4 py-3 rounded-xl border border-slate-200 text-sm">
+      <button onclick="saveConfig()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Save Settings</button>
+    </div>
+  </div>
+
+  <div class="w-full max-w-sm mx-auto">
+    <div class="mb-6 flex justify-between items-end">
+      <div>
+        <p id="todayDate" class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1"></p>
+        <h1 class="text-2xl font-bold text-slate-900">Hi, Bharata 👋</h1>
+      </div>
+      <button onclick="resetConfig()" class="text-[10px] text-slate-400 underline">Settings</button>
+    </div>
     
-    <!-- Header -->
-    <div class="mb-6">
-      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="currentDateDisplay"></p>
-      <div class="flex items-center gap-2">
-        <h2 class="text-sm font-bold text-slate-700">Hi, Bharata Wicaksana</h2>
-        <span class="text-lg">👋</span>
-      </div>
-    </div>
-
     <!-- Allowance Card -->
-    <div class="fintech-gradient p-6 rounded-[2rem] shadow-xl shadow-blue-500/20 text-white mb-6">
-      <div class="flex justify-between items-center mb-1">
-        <p class="text-[10px] uppercase tracking-widest opacity-80 font-bold">Your Allowance</p>
-        <button id="eyeBtn" onclick="toggleBalance()" class="opacity-80 hover:opacity-100 transition">
-            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-        </button>
+    <div class="allowance-card p-6 rounded-3xl mb-8 shadow-lg text-white flex justify-between items-center h-28">
+      <div>
+        <p class="text-[10px] font-semibold uppercase tracking-widest opacity-80 mb-1">YOUR ALLOWANCE</p>
+        <h2 id="sisaBudget" class="text-2xl font-black tracking-tight">*******</h2>
       </div>
-      <h1 id="sisaBudget" class="text-3xl font-bold tracking-tight mb-4">*******</h1>
+      <button onclick="toggleBalance()" class="h-10 w-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 transition">
+        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      </button>
     </div>
-
-    <!-- Transaction Form -->
-    <form id="expenseForm" class="glass-card p-6 rounded-[2rem] shadow-lg border border-slate-100 mb-6">
-      <input type="text" id="barang" placeholder="What did you buy?" required 
-        class="w-full mb-4 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-      
-      <div class="flex flex-col gap-2 mb-4">
-        <select id="kategori" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none text-sm text-slate-600">
-          <option value="Food">🍔 Food & Drink</option>
-          <option value="Transport">🚗 Transport</option>
-          <option value="Fuel">⛽ Fuel</option>
-          <option value="Bills">💡 Bills / Electricity / Credit</option>
-          <option value="Shopping">🛒 Monthly Shopping</option>
-          <option value="Entertainment">🎮 Entertainment</option>
-          <option value="Health">💊 Health</option>
-          <option value="Others">📦 Others</option>
-        </select>
-        <input type="number" id="jumlah" placeholder="Amount" required min="0"
-          class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-      </div>
-      
-      <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition">Save Entry</button>
+    
+    <form id="expenseForm" class="space-y-4">
+      <input type="text" id="barang" placeholder="What do you buy?" required class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+      <select id="kategori" class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-200 outline-none text-sm text-slate-600 appearance-none">
+        <option value="Food">🍔 Food & Drink</option>
+        <option value="Transport">🚗 Transport</option>
+        <option value="Fuel">⛽ Fuel</option>
+        <option value="Bills">💡 Bills / Credit</option>
+        <option value="Shopping">🛒 Monthly Shopping</option>
+        <option value="Entertainment">🎮 Entertainment</option>
+        <option value="Health">💊 Health</option>
+        <option value="Others">📦 Others</option>
+      </select>
+      <input type="text" id="jumlahDisplay" placeholder="Amount (Rp)" required class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+      <button type="submit" id="submitBtn" class="w-full bg-slate-900 text-white font-bold py-3 rounded-2xl shadow-lg hover:bg-slate-800 transition">Save Transaction</button>
     </form>
 
-    <!-- Recent Transactions -->
-    <div class="mb-4 flex items-center justify-between cursor-pointer" onclick="toggleHistory()">
-      <h3 class="font-bold text-slate-800">Recent Transactions</h3>
-      <span id="historyToggleText" class="text-[10px] text-indigo-600 font-bold">SHOW</span>
-    </div>
-
-    <div id="expenseList" class="space-y-3 hidden">
-      <!-- Transactions injected here -->
+    <div class="mt-8">
+      <h3 class="text-xs font-bold text-slate-500 mb-4 cursor-pointer flex justify-between items-center px-2" onclick="toggleVisibility('expenseList')">
+        <span class="uppercase tracking-widest">Recent Transactions</span>
+        <svg id="historyIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </h3>
+      <div id="expenseList" class="space-y-3 hidden"></div>
     </div>
   </div>
 
   <script>
-    const URL = "https://script.google.com/macros/s/AKfycbz3nmxuSBf0jNYjJPhHuhX53BIvMeBdWLto5eDnn96OorK0QroPKyjo7yiJk5sT9inr/exec"; 
-    let budgetTotal = 0;
-    let transactions = [];
-    let isBudgetHidden = true;
+    const STORAGE_URL = 'bw_script_url';
+    const STORAGE_PIN = 'bw_script_pin';
 
-    document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    function saveConfig() {
+      localStorage.setItem(STORAGE_URL, document.getElementById('inputUrl').value);
+      localStorage.setItem(STORAGE_PIN, document.getElementById('inputPin').value);
+      location.reload();
+    }
+
+    function resetConfig() {
+      localStorage.clear();
+      location.reload();
+    }
+
+    function checkConfig() {
+      if (!localStorage.getItem(STORAGE_URL)) {
+        document.getElementById('setupModal').classList.remove('hidden');
+      }
+    }
+
+    const amountInput = document.getElementById('jumlahDisplay');
+    amountInput.addEventListener('input', function(e) {
+      let value = this.value.replace(/[^,\d]/g, '').toString();
+      let split = value.split(',');
+      let sisa = split[0].length % 3;
+      let rupiah = split[0].substr(0, sisa);
+      let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+      if (ribuan) {
+        let separator = sisa ? '.' : '';
+        rupiah += separator + ribuan.join('.');
+      }
+      this.value = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
     });
 
+    document.getElementById('todayDate').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+    
     async function fetchData() {
+      if (!localStorage.getItem(STORAGE_URL)) return;
       try {
-        const res = await fetch(URL);
+        const res = await fetch(localStorage.getItem(STORAGE_URL) + "?pin=" + localStorage.getItem(STORAGE_PIN));
         const data = await res.json();
-        budgetTotal = parseFloat(data.budget) || 0;
-        transactions = data.history || [];
-        renderHistory();
-      } catch (err) {
-        document.getElementById('sisaBudget').innerText = "Oops!";
-      }
-    }
-
-    function toggleBalance() {
-      const el = document.getElementById('sisaBudget');
-      const icon = document.getElementById('eyeIcon');
-      isBudgetHidden = !isBudgetHidden;
-      
-      if (isBudgetHidden) {
-        el.innerText = "*******";
-        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
-      } else {
-        el.innerText = new Intl.NumberFormat('id-ID', {
-          style: 'currency', currency: 'IDR', maximumFractionDigits: 0
-        }).format(budgetTotal);
-        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.7 9.7 0 012.33-3.468m4.558 0a9.7 9.7 0 015.424 0M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />`;
-      }
-    }
-
-    function toggleHistory() {
-      const list = document.getElementById('expenseList');
-      const toggleText = document.getElementById('historyToggleText');
-      list.classList.toggle('hidden');
-      toggleText.innerText = list.classList.contains('hidden') ? 'SHOW' : 'HIDE';
-    }
-
-    function toggleWeek(id) {
-      document.getElementById(id).classList.toggle('hidden');
-    }
-
-    function renderHistory() {
-      const list = document.getElementById('expenseList');
-      list.innerHTML = '';
-      
-      const grouped = transactions.reduce((acc, tx) => {
-        const d = new Date(tx.date);
-        const week = Math.ceil(d.getDate() / 7);
-        const month = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-        const key = `${month} - Week ${week}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(tx);
-        return acc;
-      }, {});
-
-      Object.keys(grouped).forEach((key, index) => {
-        const weekId = `week-${index}`;
-        list.innerHTML += `
-            <div class="glass-card p-4 rounded-2xl border border-slate-100">
-                <div class="flex items-center justify-between cursor-pointer" onclick="toggleWeek('${weekId}')">
-                    <p class="text-xs font-bold text-slate-800">${key}</p>
-                    <span class="text-[10px] text-slate-400">Tap to see</span>
-                </div>
-                <div id="${weekId}" class="hidden mt-3 space-y-2">
-                    ${grouped[key].reverse().map(t => `
-                        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm">
-                                    ${t.kategori === 'Food' ? '🍔' : t.kategori === 'Transport' ? '🚗' : t.kategori === 'Fuel' ? '⛽' : t.kategori === 'Bills' ? '💡' : t.kategori === 'Shopping' ? '🛒' : t.kategori === 'Entertainment' ? '🎮' : t.kategori === 'Health' ? '💊' : '📦'}
-                                </div>
-                                <p class="text-xs font-bold text-slate-800">${t.barang}</p>
-                            </div>
-                            <span class="text-xs font-bold text-slate-800">- ${Number(t.jumlah).toLocaleString('id-ID')}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>`;
-      });
+        renderHistory(data.history || []);
+        document.getElementById('sisaBudget').innerText = "Rp " + (parseFloat(data.budget) || 0).toLocaleString('id-ID');
+      } catch (err) { console.error(err); }
     }
 
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = document.getElementById("submitBtn");
-      btn.innerText = "Processing...";
-      
-      const formData = new URLSearchParams();
-      formData.append('barang', document.getElementById('barang').value);
-      formData.append('kategori', document.getElementById('kategori').value);
-      formData.append('jumlah', document.getElementById('jumlah').value);
-
-      try {
-        await fetch(URL, { method: "POST", body: formData });
-        document.getElementById('expenseForm').reset();
-        await fetchData();
-      } catch (err) {
-        console.error(err);
-      }
-      btn.innerText = "Save Entry";
+      const btn = document.getElementById('submitBtn');
+      btn.innerText = "Saving...";
+      const formData = new URLSearchParams({
+        barang: document.getElementById('barang').value,
+        kategori: document.getElementById('kategori').value,
+        jumlah: document.getElementById('jumlahDisplay').value.replace(/\./g, ''),
+        pin: localStorage.getItem(STORAGE_PIN) // Sending PIN
+      });
+      await fetch(localStorage.getItem(STORAGE_URL), { method: "POST", body: formData });
+      btn.innerText = "Save Transaction";
+      document.getElementById('expenseForm').reset();
+      fetchData();
     });
 
+    function renderHistory(transactions) {
+      const list = document.getElementById('expenseList');
+      if (!transactions || transactions.length === 0) {
+        list.innerHTML = `<p class="text-center text-slate-400 py-6 text-sm">No recent transactions found.</p>`;
+        return;
+      }
+      // ... existing code for rendering ...
+      list.innerHTML = transactions.map(t => `<div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex justify-between text-xs text-slate-600"><span>${t.barang}</span><span class="font-bold">Rp ${Number(t.jumlah).toLocaleString('id-ID')}</span></div>`).join('');
+    }
+
+    checkConfig();
     fetchData();
   </script>
 </body>
