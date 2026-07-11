@@ -6,40 +6,43 @@
   <title>B.W. Expense Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background-color: #f8fafc; }
     .fintech-gradient { background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%); }
     .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(241, 245, 249, 1); }
-    .hidden-balance { filter: blur(8px); pointer-events: none; transition: 0.3s; }
   </style>
 </head>
-<body class="p-4 md:p-8 font-sans text-slate-800">
+<body class="p-4 md:p-8 font-sans text-slate-800 bg-slate-50">
 
   <div class="max-w-md mx-auto">
     
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Good Day!</p>
-        <h2 class="text-sm font-bold text-slate-700">Bharata Wicaksana</h2>
+    <!-- Header -->
+    <div class="mb-6">
+      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="currentDateDisplay"></p>
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-bold text-slate-700">Hi, Bharata Wicaksana</h2>
+        <span class="text-lg">👋</span>
       </div>
-      <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">BW</div>
     </div>
 
     <!-- Allowance Card -->
     <div class="fintech-gradient p-6 rounded-[2rem] shadow-xl shadow-blue-500/20 text-white mb-6">
       <div class="flex justify-between items-center mb-1">
         <p class="text-[10px] uppercase tracking-widest opacity-80 font-bold">Your Allowance</p>
-        <button onclick="toggleBalance()" class="text-[10px] font-bold opacity-70 underline">Toggle</button>
+        <button id="eyeBtn" onclick="toggleBalance()" class="opacity-80 hover:opacity-100 transition">
+            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+        </button>
       </div>
-      <h1 id="sisaBudget" class="text-3xl font-bold tracking-tight mb-4 hidden-balance">Loading...</h1>
+      <h1 id="sisaBudget" class="text-3xl font-bold tracking-tight mb-4">*******</h1>
     </div>
 
     <!-- Transaction Form -->
     <form id="expenseForm" class="glass-card p-6 rounded-[2rem] shadow-lg border border-slate-100 mb-6">
-      <input type="text" id="barang" placeholder="What do you buy?" required 
+      <input type="text" id="barang" placeholder="What did you buy?" required 
         class="w-full mb-4 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
       
       <div class="flex flex-col gap-2 mb-4">
-        <!-- Category Selector -->
         <select id="kategori" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none text-sm text-slate-600">
           <option value="Food">🍔 Food & Drink</option>
           <option value="Transport">🚗 Transport</option>
@@ -50,8 +53,7 @@
           <option value="Health">💊 Health</option>
           <option value="Others">📦 Others</option>
         </select>
-        <!-- Amount Below Category -->
-        <input type="number" id="jumlah" placeholder="Amount" required 
+        <input type="number" id="jumlah" placeholder="Amount" required min="0"
           class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
       </div>
       
@@ -73,6 +75,11 @@
     const URL = "https://script.google.com/macros/s/AKfycbz3nmxuSBf0jNYjJPhHuhX53BIvMeBdWLto5eDnn96OorK0QroPKyjo7yiJk5sT9inr/exec"; 
     let budgetTotal = 0;
     let transactions = [];
+    let isBudgetHidden = true;
+
+    document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
 
     async function fetchData() {
       try {
@@ -87,7 +94,19 @@
     }
 
     function toggleBalance() {
-      document.getElementById('sisaBudget').classList.toggle('hidden-balance');
+      const el = document.getElementById('sisaBudget');
+      const icon = document.getElementById('eyeIcon');
+      isBudgetHidden = !isBudgetHidden;
+      
+      if (isBudgetHidden) {
+        el.innerText = "*******";
+        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
+      } else {
+        el.innerText = new Intl.NumberFormat('id-ID', {
+          style: 'currency', currency: 'IDR', maximumFractionDigits: 0
+        }).format(budgetTotal);
+        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.7 9.7 0 012.33-3.468m4.558 0a9.7 9.7 0 015.424 0M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />`;
+      }
     }
 
     function toggleHistory() {
@@ -98,19 +117,13 @@
     }
 
     function toggleWeek(id) {
-      const el = document.getElementById(id);
-      el.classList.toggle('hidden');
+      document.getElementById(id).classList.toggle('hidden');
     }
 
     function renderHistory() {
       const list = document.getElementById('expenseList');
       list.innerHTML = '';
       
-      document.getElementById('sisaBudget').innerText = new Intl.NumberFormat('id-ID', {
-        style: 'currency', currency: 'IDR', maximumFractionDigits: 0
-      }).format(budgetTotal);
-
-      // Grouping by Week
       const grouped = transactions.reduce((acc, tx) => {
         const d = new Date(tx.date);
         const week = Math.ceil(d.getDate() / 7);
