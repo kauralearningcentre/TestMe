@@ -15,28 +15,36 @@
   <div class="modern-card p-6 rounded-[2rem] shadow-2xl w-full max-w-sm mx-auto border border-white">
     <div class="text-center mb-6">
       <h2 class="text-2xl font-bold text-slate-800">Expense Tracker</h2>
+      <p id="todayDate" class="text-xs text-slate-500 font-medium mt-1"></p>
     </div>
     
-    <div class="bg-indigo-600 p-6 rounded-[1.5rem] mb-6 shadow-xl text-center">
-      <label class="block text-indigo-200 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Remaining Budget</label>
-      <div id="sisaBudget" class="text-3xl font-black text-white hidden">Loading...</div>
-      <button id="toggleBtn" onclick="toggleBudget()" class="mt-2 bg-indigo-500/50 hover:bg-indigo-500 text-white px-5 py-1.5 rounded-full text-[11px] font-semibold transition-all">Show Budget</button>
+    <div class="bg-indigo-600 p-6 rounded-[1.5rem] mb-6 shadow-xl text-center text-white">
+      <label class="block text-indigo-200 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 cursor-pointer" onclick="toggleVisibility('sisaBudget', 'budgetLabel')">
+        <span id="budgetLabel">Tap to show Remaining Budget</span>
+      </label>
+      <div id="sisaBudget" class="text-3xl font-black hidden">Loading...</div>
     </div>
     
     <form id="expenseForm" class="space-y-3">
-      <input type="text" id="barang" placeholder="Description" required class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 outline-none shadow-sm">
-      <select id="kategori" class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 outline-none shadow-sm">
-        <option value="Makanan">🍔 Food & Drink</option>
-        <option value="Transportasi">🚗 Transport</option>
-        <option value="Hiburan">🎮 Entertainment</option>
+      <input type="text" id="barang" placeholder="Description" required class="w-full px-5 py-3 rounded-2xl bg-slate-100 border-none outline-none">
+      <select id="kategori" class="w-full px-5 py-3 rounded-2xl bg-slate-100 border-none outline-none">
+        <option value="Food">🍔 Food & Drink</option>
+        <option value="Transport">🚗 Transport</option>
+        <option value="Bills">💡 Bills / Electricity / Credit</option>
+        <option value="Shopping">🛒 Monthly Shopping</option>
+        <option value="Entertainment">🎮 Entertainment</option>
+        <option value="Health">💊 Health</option>
+        <option value="Others">📦 Others</option>
       </select>
-      <input type="number" id="jumlah" placeholder="Amount" required class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 outline-none shadow-sm">
-      <button type="submit" class="w-full bg-slate-900 text-white font-bold py-3 rounded-2xl">Save Transaction</button>
+      <input type="number" id="jumlah" placeholder="Amount (IDR)" required class="w-full px-5 py-3 rounded-2xl bg-slate-100 border-none outline-none">
+      <button type="submit" id="submitBtn" class="w-full bg-slate-900 text-white font-bold py-3 rounded-2xl hover:bg-slate-800 transition">Save Transaction</button>
     </form>
 
     <div class="mt-8">
-      <h3 class="text-sm font-bold text-slate-700 mb-4">My Expenses</h3>
-      <div id="expenseList" class="space-y-4"></div>
+      <h3 class="text-sm font-bold text-slate-700 mb-4 cursor-pointer underline" onclick="toggleVisibility('expenseList', 'historyLabel')">
+        <span id="historyLabel">Tap to show Expense History</span>
+      </h3>
+      <div id="expenseList" class="space-y-3 hidden"></div>
     </div>
   </div>
 
@@ -45,59 +53,99 @@
     let transactions = [];
     let budgetTotal = 0;
 
+    document.getElementById('todayDate').innerText = new Date().toLocaleDateString('id-ID');
+
     window.onload = async () => {
-      const res = await fetch(URL);
-      const data = await res.json();
-      budgetTotal = data.budget || 0;
-      transactions = data.history || [];
-      updateUI();
+      try {
+        const res = await fetch(URL);
+        const data = await res.json();
+        budgetTotal = parseFloat(data.budget) || 0;
+        transactions = data.history || [];
+        updateUI();
+      } catch (err) { console.error(err); }
     };
 
     function updateUI() {
       const list = document.getElementById('expenseList');
       list.innerHTML = '';
-      const today = new Date().toISOString().split('T')[0];
       
+      // Langsung tampilkan budgetTotal yang diambil dari Google Sheets (F2)
+      document.getElementById('sisaBudget').innerText = new Intl.NumberFormat('id-ID', {
+        style: 'currency', 
+        currency: 'IDR', 
+        maximumFractionDigits: 0
+      }).format(budgetTotal);
+
       const groups = transactions.reduce((acc, tx) => {
-        if (!acc[tx.date]) acc[tx.date] = [];
-        acc[tx.date].push(tx);
+        const d = new Date(tx.date);
+        const month = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+        const week = Math.ceil(d.getDate() / 7);
+        if (!acc[month]) acc[month] = {};
+        if (!acc[month][week]) acc[month][week] = [];
+        acc[month][week].push(tx);
         return acc;
       }, {});
 
-      Object.keys(groups).sort().reverse().forEach(date => {
-        const isToday = date === today;
-        const total = groups[date].reduce((sum, t) => sum + t.jumlah, 0);
-        
-        const div = document.createElement('div');
-        div.className = "bg-white p-3 rounded-xl shadow-sm border border-slate-100";
-        div.innerHTML = `<div class="flex justify-between font-bold text-xs cursor-pointer" onclick="toggleDetails('${date}')">
-          <span>${isToday ? 'Today' : date}</span>
-          <span>Rp ${total.toLocaleString()}</span>
-        </div>
-        <div id="details-${date}" class="${isToday ? '' : 'hidden'} mt-2 space-y-1">
-          ${groups[date].map(t => `<div class="flex justify-between text-[10px] text-slate-500"><span>${t.barang}</span><span>${t.jumlah}</span></div>`).join('')}
-        </div>`;
-        list.appendChild(div);
+      Object.keys(groups).sort().reverse().forEach(month => {
+        list.innerHTML += `<div class="text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-widest">${month}</div>`;
+        Object.keys(groups[month]).sort().reverse().forEach(week => {
+          const totalWeek = groups[month][week].reduce((s, t) => s + Number(t.jumlah), 0);
+          const weekId = `${month}-${week}`.replace(/\s+/g, '-');
+          list.innerHTML += `
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+              <div class="flex justify-between font-bold text-xs cursor-pointer" onclick="toggleDetails('${weekId}')">
+                <span>Week ${week}</span>
+                <span>Rp ${totalWeek.toLocaleString('id-ID')}</span>
+              </div>
+              <div id="details-${weekId}" class="hidden mt-3 space-y-2 border-t border-slate-50 pt-2">
+                ${groups[month][week].map(t => `
+                  <div class="flex justify-between text-[10px] text-slate-500">
+                    <span>${new Date(t.date).toLocaleDateString('id-ID')} - ${t.barang}</span>
+                    <span class="font-semibold text-slate-700">${Number(t.jumlah).toLocaleString('id-ID')}</span>
+                  </div>`).join('')}
+              </div>
+            </div>`;
+        });
       });
-      document.getElementById('sisaBudget').innerText = new Intl.NumberFormat('id-ID', {style: 'currency', currency: 'IDR'}).format(budgetTotal - transactions.reduce((a, b) => a + b.jumlah, 0));
+    }
+
+    function toggleVisibility(id, labelId) {
+      const el = document.getElementById(id);
+      const label = document.getElementById(labelId);
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        label.innerText = labelId === 'budgetLabel' ? 'Remaining Budget' : 'Expense History';
+      } else {
+        el.classList.add('hidden');
+        label.innerText = labelId === 'budgetLabel' ? 'Tap to show Remaining Budget' : 'Tap to show Expense History';
+      }
+    }
+
+    function toggleDetails(id) {
+      const el = document.getElementById(`details-${id}`);
+      if (el) el.classList.toggle('hidden');
     }
 
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      btn.innerText = "Saving...";
+      
       const newTx = {
         date: new Date().toISOString().split('T')[0],
         barang: document.getElementById('barang').value,
-        jumlah: parseFloat(document.getElementById('jumlah').value)
+        kategori: document.getElementById('kategori').value,
+        jumlah: document.getElementById('jumlah').value
       };
-      await fetch(URL, { method: "POST", body: new URLSearchParams(newTx) });
-      transactions.push(newTx);
-      updateUI();
-      document.getElementById('expenseForm').reset();
-    });
 
-    function toggleDetails(date) { document.getElementById(`details-${date}`).classList.toggle('hidden'); }
-    function toggleBudget() { document.getElementById('sisaBudget').classList.toggle('hidden'); }
+      try {
+        await fetch(URL, { method: "POST", body: new URLSearchParams(newTx) });
+        transactions.push(newTx);
+        updateUI();
+        document.getElementById('expenseForm').reset();
+      } catch (err) { alert("Failed to save data."); }
+      btn.innerText = "Save Transaction";
+    });
   </script>
 </body>
 </html>
-```
